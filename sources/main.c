@@ -1,15 +1,4 @@
-#include "../includes/ft_printf/includes/ft_printf.h"
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/wait.h>
-#include <sys/errno.h>
-
-typedef struct s_pipe
-{
-	char *path;
-} t_pipe;
+#include "../pipex.h"
 
 int check_error(char *file, int in_out) //in = 0, out = 1
 {
@@ -36,21 +25,66 @@ int check_error(char *file, int in_out) //in = 0, out = 1
 	return (1);
 }
 
-void pipex(char **argv)
+void del_clist(char **char_list)
 {
-	int fd;
-	int mode;
+	int i;
 
-	fd = open(argv[1], O_RDONLY);
-	mode = access(argv[4], R_OK);
-	if (errno != 0)
+	i = 0;
+	while (char_list[i])
 	{
-		ft_printf("%d\n", errno);
-		ft_printf("zsh: %s: %s\n", strerror(errno), argv[1]);
+		free(char_list[i]);
+		i++;
 	}
-	close(fd);
+	free(char_list);
 }
 
+
+
+void del_pipe(t_pipe *pipe)
+{
+	int i;
+
+	free(pipe->cmd_path);
+	i = 0;
+	while (pipe->cmd_lst[i])
+	{
+		free(pipe->cmd_lst[i]);
+		i++;
+	}
+	free(pipe->cmd_lst);
+}
+
+int check_access(t_pipe *pipe)
+{
+	int i;
+	char **paths;
+	char *cmd;
+	char *aux;
+	
+	i = 0;
+	paths = ft_split(pipe->cmd_path, ':');
+	while (paths[i])
+	{
+		aux = ft_strjoin(paths[i], "/");
+		cmd = ft_strjoin(aux, pipe->cmd_lst[0]);
+		free(aux);
+		if (!access(cmd, F_OK))
+		{
+			free(pipe->cmd_path);
+			pipe->cmd_path = ft_strdup(cmd);
+			free(cmd);
+			del_clist(paths);
+			return (1);
+		}
+		else
+			free(cmd);
+		i++;
+	}
+	del_clist(paths);
+	return (0);
+}
+
+/*paths = search on the environment the line corresponding to paths, adds it to the struct pipe*/
 void paths(t_pipe *pipe, char **envp)
 {
 	int i;
@@ -62,14 +96,9 @@ void paths(t_pipe *pipe, char **envp)
 		i++;
 	}
 	path = ft_strdup(&(envp[i][5]));
-	pipe->path = path;
+	pipe->cmd_path = path;
+	check_access(pipe);
 }
-
-void del_pipe(t_pipe *pipe)
-{
-	free(pipe->path);
-}
-
 
 int main(int argc, char **argv, char **envp)
 {
@@ -84,10 +113,11 @@ int main(int argc, char **argv, char **envp)
 			return (0);
 		if (!check_error(argv[4], 1))
 			return (0);
-		pipex(argv);
 	}
+	pipe.cmd_lst = ft_split(argv[2], ' ');
 	paths(&pipe, envp);
-	printf("%s\n", pipe.path);
+	printf("%s\n", pipe.cmd_path);
+	execve(pipe.cmd_path, ft_split(argv[2], ' '), envp);
 	del_pipe(&pipe);
 	return (0);
 }
