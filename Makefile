@@ -6,7 +6,7 @@ SRC_DIR = sources
 
 PRINTF_DIR = includes/ft_printf
 
-SRC = $(SRC_DIR)/main.c
+SRC = $(SRC_DIR)/*
 
 FLAGS = -Wall -Wextra -Werror
 
@@ -24,6 +24,12 @@ all : $(NAME)
 clean:
 	$(MAKE) clean -C $(PRINTF_DIR)
 	$(RM) $(PRINTF)
+
+fclean: clean
+	$(MAKE) fclean -C $(PRINTF_DIR)
+	$(RM) $(PRINTF)
 	$(RM) $(NAME)
 
+re: fclean all
 
+.PHONY: clean fclean all re
