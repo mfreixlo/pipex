@@ -19,20 +19,20 @@ FLAGS = -c -Wall -Wextra -Werror
 RM = rm -f
 
 $(NAME): $(OBJS)
-	$(MAKE) -C ./libft
-	cp libft/libft.a $(NAME)
-	$(CC) $(FLAGS) $(INCLUDES)  $(SRC)
-	ar -rc $(NAME) $(OBJS)
+	@ $(MAKE) -C ./libft
+	@ cp libft/libft.a $(NAME)
+	@ $(CC) $(FLAGS) $(INCLUDES)  $(SRC)
+	@ ar -rc $(NAME) $(OBJS)
 
 all : $(NAME)
 
 clean:
-	$(MAKE) clean -C ./libft
-	$(RM) $(OBJS)
-	$(RM) $(SURPL_O)
+	@ $(MAKE) clean -C ./libft
+	@ $(RM) $(OBJS)
+	@ $(RM) $(SURPL_O)
 
 fclean : clean
-	$(MAKE) fclean -C ./libft
-	$(RM) $(NAME)
+	@ $(MAKE) fclean -C ./libft
+	@ $(RM) $(NAME)
 
 re : fclean all

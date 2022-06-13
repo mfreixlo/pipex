@@ -1,123 +1,124 @@
-#include "../pipex.h"
+#include "../includes/pipex.h"
 
-int check_error(char *file, int in_out) //in = 0, out = 1
-{
-	int mode;
-
-	if (in_out == 0)
-	{
-		mode = access(file, R_OK);
-		if (errno != 0)
-		{
-			ft_printf("zsh: %s: %s\n", strerror(errno), file);
-			return (0);
-		}
-	}
-	if (in_out == 1)
-	{
-		mode = access(file, W_OK);
-		if (errno != 0)
-		{
-			ft_printf("zsh: %s: %s\n", strerror(errno), file);
-			return (0);
-		}
-	}
-	return (1);
-}
-
-void del_clist(char **char_list)
+void clear_pipe(t_pipe *mypipe)
 {
 	int i;
 
 	i = 0;
-	while (char_list[i])
+	while (mypipe->paths[i])
 	{
-		free(char_list[i]);
+		free(mypipe->paths[i]);
 		i++;
 	}
-	free(char_list);
+	free(mypipe->paths);
 }
 
-
-
-void del_pipe(t_pipe *pipe)
-{
-	int i;
-
-	free(pipe->cmd_path);
-	i = 0;
-	while (pipe->cmd_lst[i])
-	{
-		free(pipe->cmd_lst[i]);
-		i++;
-	}
-	free(pipe->cmd_lst);
-}
-
-int check_access(t_pipe *pipe)
+int paths(t_pipe *mypipe)
 {
 	int i;
 	char **paths;
-	char *cmd;
-	char *aux;
-	
+//	char *aux;
+
+
 	i = 0;
-	paths = ft_split(pipe->cmd_path, ':');
-	while (paths[i])
+	while((mypipe->env)[i])
 	{
-		aux = ft_strjoin(paths[i], "/");
-		cmd = ft_strjoin(aux, pipe->cmd_lst[0]);
-		free(aux);
-		if (!access(cmd, F_OK))
-		{
-			free(pipe->cmd_path);
-			pipe->cmd_path = ft_strdup(cmd);
-			free(cmd);
-			del_clist(paths);
-			return (1);
-		}
-		else
-			free(cmd);
+		if (!ft_strncmp((*mypipe).env[i], "PATH", 4))
+			paths = ft_split(&(mypipe->env[i])[5], ':');
 		i++;
 	}
-	del_clist(paths);
+	mypipe->paths = malloc(sizeof(char*) * i);
+	i = 0;
+	while (paths[i])
+	{
+		mypipe->paths[i] = ft_strjoin(paths[i], "/");
+		i++;
+	}
+	mypipe->paths[i] = NULL;
 	return (0);
 }
 
-/*paths = search on the environment the line corresponding to paths, adds it to the struct pipe*/
-void paths(t_pipe *pipe, char **envp)
+int executa(char **cmd, t_pipe mypipe)
 {
+	(void) cmd;
 	int i;
 	char *path;
 
 	i = 0;
-	while (envp[i] && strncmp("PATH", envp[i], 4))
+	while (mypipe.paths[i])
 	{
+		path = ft_strjoin(mypipe.paths[i], cmd[0]);
+		if (!access(path, F_OK))
+		{
+			execve(path, cmd, mypipe.env);
+			free(path); //se for diferente de -1 nem entra aqui, logo tenho de ver aquela cena do access para libertar esta memory :)
+			return (0);
+		}
+		free(path);
 		i++;
 	}
-	path = ft_strdup(&(envp[i][5]));
-	pipe->cmd_path = path;
-	check_access(pipe);
-}
-
-int main(int argc, char **argv, char **envp)
-{
-	(void) envp;
-	t_pipe pipe;
-	
-	if (argc != 5)
-		return (0);
-	else
-	{
-		if (!check_error(argv[1], 0))
-			return (0);
-		if (!check_error(argv[4], 1))
-			return (0);
-	}
-	pipe.cmd_lst = ft_split(argv[2], ' ');
-	paths(&pipe, envp);
-	printf("%s\n", pipe.cmd_path);
-	execve(pipe.cmd_path, ft_split(argv[2], ' '), envp);
-	del_pipe(&pipe);
 	return (0);
 }
+
+int files(t_pipe *mypipe, char *infile, char *outfile)
+{
+	mypipe->infile = open(infile, O_RDONLY);
+	mypipe->outfile = open(outfile, O_CREAT | O_RDWR | O_TRUNC, 0000644);	
+	if (mypipe->infile == -1 || mypipe->outfile == -1)
+		return (-1);
+	else
+		return (0);
+}
+
+int child1(t_pipe *mypipe, char *args)
+{
+	char **cmd1;
+
+	cmd1 = ft_split(args, ' ');
+	close(mypipe->pipe[0]);
+	dup2(mypipe->infile, STDIN_FILENO);
+	dup2(mypipe->pipe[1], 1);
+	close(mypipe->infile);
+	executa(cmd1, *mypipe);
+	exit(1);
+}
+
+int	child2(t_pipe *mypipe, char *args)
+{
+	char **cmd2;
+
+	cmd2 = ft_split(args, ' ');
+	close(mypipe->pipe[1]);
+	dup2(mypipe->pipe[0], STDIN_FILENO);
+	dup2(mypipe->outfile, 1);
+	executa(cmd2, *mypipe);
+
+
+	return (0);
+}
+
+int main(int argc, char **argv, char **env) {
+	
+	(void) argc;
+	(void) argv;
+	t_pipe mypipe;
+	int	pid1;
+	int pid2;
+
+	mypipe.env = env;
+	paths(&mypipe);
+	files(&mypipe, argv[1], argv[4]);
+	pipe(mypipe.pipe);
+	pid1 = fork();
+	if (pid1 < 0)
+		return (printf("fuck\n"));
+	else if (pid1 == 0) //estamos no processo filho
+		child1(&mypipe, argv[2]);
+	pid2 = fork();
+	if (pid2 < 0)
+		printf("fuck thiiiissss\n");
+	else if (pid2 == 0)
+		child2(&mypipe, argv[3]);
+//	clear_pipe(&mypipe);
+}
+
