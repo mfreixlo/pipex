@@ -6,7 +6,7 @@
 /*   By: mfreixo- <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/14 13:48:04 by mfreixo-          #+#    #+#             */
-/*   Updated: 2022/06/20 11:23:16 by mfreixo-         ###   ########.fr       */
+/*   Updated: 2022/06/21 00:56:22 by mfreixo-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -95,6 +95,7 @@ int	main(int argc, char **argv, char **env)
 		perror("Pipe error ");
 	else if (pid1 == 0)
 		child1(&mypipe, argv[2]);
+	waitpid(pid1, NULL, 0);
 	pid2 = fork();
 	if (pid2 < 0)
 		clear_pipe(&mypipe);
@@ -104,7 +105,6 @@ int	main(int argc, char **argv, char **env)
 		child2(&mypipe, argv[3]);
 	close(mypipe.pipe[0]);
 	close(mypipe.pipe[1]);
-	waitpid(pid1, NULL, 0);
 	waitpid(pid2, NULL, 0);
 	return (clear_pipe(&mypipe));
 }
