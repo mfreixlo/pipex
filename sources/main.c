@@ -6,97 +6,11 @@
 /*   By: mfreixo- <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/14 13:48:04 by mfreixo-          #+#    #+#             */
-/*   Updated: 2022/06/15 15:20:38 by mfreixo-         ###   ########.fr       */
+/*   Updated: 2022/06/20 11:23:16 by mfreixo-         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/pipex.h"
-
-int	clear_pipe(t_pipe *mypipe)
-{
-	int	i;
-
-	i = 0;
-	if (!mypipe->paths || !mypipe->paths[0])
-		return (0);
-	while (mypipe->paths[i])
-	{
-		free(mypipe->paths[i]);
-		i++;
-	}
-	free(mypipe->paths);
-	return (0);
-}
-
-void	clear_split(char ***split)
-{
-	int	i;
-
-	i = 0;
-	while ((*split)[i])
-	{
-		free((*split)[i]);
-		i++;
-	}
-	free(*split);
-}
-
-int	paths(t_pipe *mypipe)
-{
-	int		i;
-	char	**paths;
-
-	i = 0;
-	while ((mypipe->env)[i])
-	{
-		if (!ft_strncmp((*mypipe).env[i], "PATH", 4))
-			paths = ft_split(&(mypipe->env[i])[5], ':');
-		i++;
-	}
-	mypipe->paths = malloc(sizeof(char *) * i);
-	if (!(mypipe->paths))
-		return (-1);
-	i = 0;
-	while (paths[i])
-	{
-		mypipe->paths[i] = ft_strjoin(paths[i], "/");
-		i++;
-	}
-	clear_split(&paths);
-	mypipe->paths[i] = NULL;
-	return (0);
-}
-
-int	executa(char **cmd, t_pipe mypipe)
-{
-	int		i;
-	char	*path;
-
-	i = 0;
-	while (mypipe.paths[i])
-	{
-		path = ft_strjoin(mypipe.paths[i], cmd[0]);
-		if (!access(path, F_OK))
-		{
-			execve(path, cmd, mypipe.env);
-			free(path);
-			return (0);
-		}
-		free(path);
-		i++;
-	}
-	ft_putstr_fd("zsh: command not found: ", 2);
-	ft_putstr_fd(cmd[0], 2);
-	ft_putstr_fd("\n", 2);
-	return (0);
-}
-
-void put_error(char *str, char *file)
-{
-	ft_putstr_fd(str, STDERR_FILENO);
-	ft_putstr_fd(file, STDERR_FILENO);
-	ft_putstr_fd("\n", STDERR_FILENO);
-}
 
 int	files(t_pipe *mypipe, char *infile, char *outfile)
 {
@@ -154,38 +68,43 @@ int	child2(t_pipe *mypipe, char *args)
 	exit(0);
 }
 
+int	init_pipe(t_pipe *mypipe, int argc, char **argv, char **env)
+{
+	if (argc != 5)
+		return (0);
+	mypipe->env = env;
+	paths(mypipe);
+	if (files(mypipe, argv[1], argv[4]) == -1)
+		return (clear_pipe(mypipe));
+	pipe(mypipe->pipe);
+	return (1);
+}
+
 int	main(int argc, char **argv, char **env)
 {	
 	t_pipe	mypipe;
 	int		pid1;
 	int		pid2;
 
-	if (argc != 5)
+	if (!init_pipe(&mypipe, argc, argv, env))
 		return (0);
-	mypipe.env = env;
-	paths(&mypipe);
-	if (files(&mypipe, argv[1], argv[4]) == -1)
-		return (clear_pipe(&mypipe));
-	pipe(mypipe.pipe);
 	pid1 = fork();
 	if (pid1 < 0)
-	{
 		clear_pipe(&mypipe);
+	if (pid1 < 0)
 		perror("Pipe error ");
-	}
 	else if (pid1 == 0)
 		child1(&mypipe, argv[2]);
 	pid2 = fork();
 	if (pid2 < 0)
-	{
 		clear_pipe(&mypipe);
+	if (pid2 < 0)
 		perror("Pipe error ");
-	}
 	else if (pid2 == 0)
 		child2(&mypipe, argv[3]);
 	close(mypipe.pipe[0]);
 	close(mypipe.pipe[1]);
 	waitpid(pid1, NULL, 0);
 	waitpid(pid2, NULL, 0);
-	return (0);
+	return (clear_pipe(&mypipe));
 }

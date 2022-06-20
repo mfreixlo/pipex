@@ -6,7 +6,7 @@ SRC_DIR = sources
 
 PRINTF_DIR = includes/ft_printf
 
-SRC = $(SRC_DIR)/main.c
+SRC = $(SRC_DIR)/main.c $(SRC_DIR)/utils.c
 
 FLAGS = -Wall -Wextra -Werror
 
